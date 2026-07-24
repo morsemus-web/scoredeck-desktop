@@ -29,7 +29,9 @@ jobs:
           cache: npm
 
       - name: Install
-        run: npm ci
+        # npm install (not ci) so lockfile drift between OSes doesn't hard-fail;
+        # legacy peer deps for React 19 + Electron transitive peers.
+        run: npm install --no-audit --no-fund --legacy-peer-deps
 
       - name: Ensure app icon exists
         shell: bash
