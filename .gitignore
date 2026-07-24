@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Electron build output — never commit installers to the desktop repo,
+# they belong in Scoreweb/public/downloads or on a GitHub Release.
+release/
+release-v2/
+
+# Scoreweb is its own separate GitHub repo (morsemus-web/hi) — never
+# tracked here to avoid double-committing.
+Scoreweb/
+
+# Mobile app source IS tracked in this repo, only its build dirs excluded.
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+
+# Generated PDFs — regenerated from build_*.py, no need to commit.
+ScoreDeck-*.pdf
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

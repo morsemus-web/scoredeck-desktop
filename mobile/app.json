@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "ScoreDeck",
+    "slug": "scoredeck",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "scoredeck",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "pro.tryscoredeck.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4b9fae"
+      }
+    },
+    "extra": {
+      "apiBase": "https://tryscoredeck.pro",
+      "supabaseUrl": "https://yeixkqyhajjvakdfodnp.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaXhrcXloYWpqdmFrZGZvZG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzY3ODgsImV4cCI6MjA4OTUxMjc4OH0.mFCzQOtcbfyYTy8_Hg_zGtwsrzmArRWuoQUSVzUQ0dI"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}
