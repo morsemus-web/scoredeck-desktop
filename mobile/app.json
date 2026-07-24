@@ -2,6 +2,7 @@
   "expo": {
     "name": "ScoreDeck",
     "slug": "scoredeck",
+    "owner": "fateh1609",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
