@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, Alert, TouchableOpacity }
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { colors, radius, spacing } from "@/lib/theme";
 
@@ -16,9 +17,11 @@ export default function Auth() {
   async function sendMagicLink() {
     if (!email.trim()) return;
     setLoading(true);
+    // createURL resolves to scoredeck:// in a standalone build and exp://…
+    // in Expo Go, so the same code works in dev and production.
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: "scoredeck://" },
+      options: { emailRedirectTo: Linking.createURL("/") },
     });
     setLoading(false);
     if (error) {

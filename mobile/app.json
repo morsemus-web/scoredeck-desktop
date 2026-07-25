@@ -17,6 +17,14 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2b994b08-9ca3-4d44-b369-f2a3ec8ec6ec",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
     "android": {
       "package": "pro.tryscoredeck.app",
       "versionCode": 1,
@@ -28,7 +36,13 @@
     "extra": {
       "apiBase": "https://tryscoredeck.pro",
       "supabaseUrl": "https://yeixkqyhajjvakdfodnp.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaXhrcXloYWpqdmFrZGZvZG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzY3ODgsImV4cCI6MjA4OTUxMjc4OH0.mFCzQOtcbfyYTy8_Hg_zGtwsrzmArRWuoQUSVzUQ0dI"
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaXhrcXloYWpqdmFrZGZvZG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzY3ODgsImV4cCI6MjA4OTUxMjc4OH0.mFCzQOtcbfyYTy8_Hg_zGtwsrzmArRWuoQUSVzUQ0dI",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "2b994b08-9ca3-4d44-b369-f2a3ec8ec6ec"
+      }
     },
     "plugins": [
       "expo-router",

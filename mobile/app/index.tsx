@@ -13,6 +13,7 @@ import EmptyState from "@/components/EmptyState";
 import SkeletonCard from "@/components/SkeletonCard";
 import AdBanner from "@/components/AdBanner";
 import BottomNav from "@/components/BottomNav";
+import UpdateBanner from "@/components/UpdateBanner";
 
 const SPORTS = ["Cricket", "Football", "Basketball", "F1"] as const;
 const SUB_TABS = ["Matches", "Leagues"] as const;
@@ -133,6 +134,8 @@ export default function Home() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />
         }
       >
+        <UpdateBanner />
+
         <SubTabs tabs={SUB_TABS} active={subTab} onSelect={setSubTab} />
 
         {subTab === "Matches" ? (

@@ -3,20 +3,24 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
-import { View } from "react-native";
+import { useRouter } from "expo-router";
 import { colors } from "@/lib/theme";
+import { useAuthDeepLink } from "@/lib/useAuthDeepLink";
 
 export default function RootLayout() {
-  // Explicitly await the icon fonts so glyphs don't render as blank boxes
-  // on web / first-launch. Native builds cache these after first run.
-  const [fontsLoaded] = useFonts({
+  const router = useRouter();
+
+  // Establish a session when a magic link opens the app, then land on the feed.
+  useAuthDeepLink(() => router.replace("/"));
+
+  // Kick off font loading in the background but do NOT block rendering on it.
+  // On native the font-load promise can silently never resolve, which used to
+  // leave the app stuck on a solid teal screen. Icons pop in when the fonts
+  // finish; if they never do, everything else still works.
+  useFonts({
     ...MaterialCommunityIcons.font,
     ...Ionicons.font,
   });
-
-  if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: colors.brand }} />;
-  }
 
   return (
     <SafeAreaProvider>
