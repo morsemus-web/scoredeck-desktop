@@ -16,6 +16,13 @@ import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { colors, radius, spacing } from "@/lib/theme";
 
+// Supabase's email OTP length is a project setting (Auth > Providers > Email),
+// so don't hard-code one. Accept anything in the allowed range and auto-submit
+// once the code reaches the length this project actually issues.
+const OTP_MIN = 6;
+const OTP_MAX = 10;
+const OTP_AUTOSUBMIT = 8;
+
 export default function Auth() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -47,7 +54,7 @@ export default function Auth() {
   }
 
   async function verifyCode(token: string) {
-    if (token.length !== 6) return;
+    if (token.length < OTP_MIN) return;
     setVerifying(true);
     const { error } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
@@ -65,9 +72,9 @@ export default function Auth() {
   }
 
   function onCodeChange(next: string) {
-    const digits = next.replace(/\D/g, "").slice(0, 6);
+    const digits = next.replace(/\D/g, "").slice(0, OTP_MAX);
     setCode(digits);
-    if (digits.length === 6) verifyCode(digits);
+    if (digits.length === OTP_AUTOSUBMIT) verifyCode(digits);
   }
 
   return (
@@ -128,7 +135,7 @@ export default function Auth() {
             </View>
             <Text style={styles.title}>Enter your code</Text>
             <Text style={styles.sub}>
-              We sent a 6-digit code to{" "}
+              We sent a code to{" "}
               <Text style={{ color: colors.text, fontWeight: "600" }}>{email}</Text>.
             </Text>
 
@@ -136,13 +143,15 @@ export default function Auth() {
               ref={codeRef}
               value={code}
               onChangeText={onCodeChange}
+              onSubmitEditing={() => verifyCode(code)}
+              returnKeyType="go"
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={OTP_MAX}
               editable={!verifying}
               textContentType="oneTimeCode"
               autoComplete="sms-otp"
               style={styles.codeInput}
-              placeholder="000000"
+              placeholder="00000000"
               placeholderTextColor={colors.border}
             />
 
@@ -152,9 +161,13 @@ export default function Auth() {
                 <Text style={styles.verifyText}>Verifying…</Text>
               </View>
             ) : (
-              <Text style={styles.hint}>
-                Tapping the link in the email also works.
-              </Text>
+              <Pressable
+                onPress={() => verifyCode(code)}
+                disabled={code.length < OTP_MIN}
+                style={[styles.btn, code.length < OTP_MIN && { opacity: 0.4 }]}
+              >
+                <Text style={styles.btnText}>Verify</Text>
+              </Pressable>
             )}
 
             <Pressable onPress={sendCode} style={styles.btnGhost}>
@@ -220,9 +233,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 16,
     color: colors.text,
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "700",
-    letterSpacing: 12,
+    letterSpacing: 7,
     textAlign: "center",
   },
   btn: {
