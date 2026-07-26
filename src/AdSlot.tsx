@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchAd, reportAdEvent, type AdCreative, type AdContext } from './ads';
 
 interface AdSlotProps {
-  variant: 'passive' | 'interstitial';
+  // 'strip' is the sponsor line under the widget bar; the server treats it as
+  // passive inventory.
+  variant: 'passive' | 'interstitial' | 'strip';
   sport?: string;
   tier?: 'free' | 'pro';
   className?: string;
@@ -13,7 +15,7 @@ export default function AdSlot({ variant, sport, tier, className }: AdSlotProps)
   const impressionSent = useRef<number | null>(null);
 
   const ctx: AdContext = {
-    variant,
+    variant: variant === 'strip' ? 'passive' : variant,
     sport,
     tier,
     locale: navigator.language?.split('-')[0],
@@ -59,7 +61,9 @@ export default function AdSlot({ variant, sport, tier, className }: AdSlotProps)
       aria-label="Sponsored"
       title="Sponsored"
     >
-      {ad.creativeUrl ? (
+      {variant === 'strip' ? (
+        <span className="ad-strip-text">{ad.subline || ad.short}</span>
+      ) : ad.creativeUrl ? (
         <img src={ad.creativeUrl} alt="Sponsored" draggable={false} />
       ) : variant === 'passive' ? (
         <span className="ad-short">{ad.short || ad.subline}</span>
@@ -69,7 +73,7 @@ export default function AdSlot({ variant, sport, tier, className }: AdSlotProps)
           {ad.subline && <span className="ad-subline">{ad.subline}</span>}
         </div>
       )}
-      <span className="ad-badge">Ad</span>
+      {variant !== 'strip' && <span className="ad-badge">Ad</span>}
     </div>
   );
 }

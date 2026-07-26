@@ -25,6 +25,11 @@ autoUpdater.on('update-downloaded', (info) => {
   console.log('[auto-update] downloaded — will install on quit:', info?.version);
 });
 
+// Bar plus the sponsor strip beneath it. The collapse path used to assume a
+// different height than the initial resize, which left a gap after expanding
+// and re-collapsing — one constant now drives both.
+const WIDGET_HEIGHT = 68;
+
 function createTrayIcon() {
   const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
   
@@ -143,13 +148,12 @@ app.whenReady().then(() => {
 
       const { workArea } = targetDisplay;
       const width = 360;
-      const height = 48;
-      
+
       mainWindow.setBounds({
         x: workArea.x + workArea.width - width - 5,
-        y: workArea.y + workArea.height - height - 5,
+        y: workArea.y + workArea.height - WIDGET_HEIGHT - 5,
         width: width,
-        height: height
+        height: WIDGET_HEIGHT
       });
       mainWindow.setAlwaysOnTop(true);
       mainWindow.setSkipTaskbar(true);
@@ -162,12 +166,11 @@ app.whenReady().then(() => {
       const expandedHeight = 250;
       
       if (bounds.height === expandedHeight) {
-         const widgetHeight = 64;
          mainWindow.setBounds({
             x: bounds.x,
-            y: bounds.y + (expandedHeight - widgetHeight),
+            y: bounds.y + (expandedHeight - WIDGET_HEIGHT),
             width: bounds.width,
-            height: widgetHeight
+            height: WIDGET_HEIGHT
          });
       } else {
          mainWindow.setBounds({

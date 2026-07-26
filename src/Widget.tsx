@@ -105,12 +105,6 @@ export default function Widget({ config, onOpenSetup }: WidgetProps) {
             ))}
           </div>
 
-          <AdSlot
-            variant="passive"
-            sport={currentConfig.sport}
-            tier={config.isPro ? 'pro' : 'free'}
-          />
-
           {/* Controls */}
           <div className="controls">
             <button className="icon-btn" onClick={toggleExpand} title="Expand Analysis">
@@ -122,6 +116,13 @@ export default function Widget({ config, onOpenSetup }: WidgetProps) {
         
         <div className="bottom-line" style={{ backgroundColor: data.color, width: data.progress }} />
       </div>
+
+      {/* Sponsor strip, sitting just under the bar rather than crowding it */}
+      <AdSlot
+        variant="strip"
+        sport={currentConfig.sport}
+        tier={config.isPro ? 'pro' : 'free'}
+      />
 
       {isExpanded && (
         <div className="expanded-analysis">

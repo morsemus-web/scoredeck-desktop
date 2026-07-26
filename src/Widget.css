@@ -7,6 +7,13 @@
   justify-content: flex-end;
 }
 
+/* Square off the bottom when the sponsor strip is attached, so the two read
+   as one object rather than two stacked pills. */
+.widget-main:has(+ .ad-slot-strip) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 .widget-main {
   width: 100%;
   min-height: 32px;
@@ -219,6 +226,31 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   pointer-events: none;
+}
+
+/* Sponsor strip under the bar. Deliberately quiet — it sits outside the
+   scoreboard so it never competes with the score for attention. */
+.ad-slot-strip {
+  width: 100%;
+  height: 16px;
+  margin-top: 3px;
+  border-radius: 0 0 6px 6px;
+  background: rgba(18, 18, 18, 0.82);
+  border: 1px solid #262626;
+  border-top: none;
+}
+
+.ad-slot-strip .ad-strip-text {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: #8b949e;
+  white-space: nowrap;
+}
+
+.ad-slot-strip:hover .ad-strip-text {
+  color: #cfd6dd;
 }
 
 /* Text creatives (the house ad) — no hosted image to fall back on. */
