@@ -125,6 +125,8 @@ export default function FavouritesScreen() {
                       score: m.score,
                       extra: m.extra,
                       status: m.status,
+                      team1Logo: m.team1Logo ?? "",
+                      team2Logo: m.team2Logo ?? "",
                     },
                   })
                 }

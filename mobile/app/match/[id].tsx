@@ -51,6 +51,8 @@ export default function MatchScreen() {
     score?: string;
     extra?: string;
     status?: string;
+    team1Logo?: string;
+    team2Logo?: string;
   }>();
 
   const sport = (params.sport as string) || "";
@@ -138,7 +140,12 @@ export default function MatchScreen() {
       {/* Scoreboard stays pinned above the tabs */}
       <View style={[styles.scoreCard, { backgroundColor: accent }]}>
         <View style={styles.scoreTeamCol}>
-          <TeamBadge name={team1} color="#ffffff" size={44} />
+          <TeamBadge
+            name={team1}
+            logo={logoFor(detail, "team1") || (params.team1Logo as string)}
+            color="#ffffff"
+            size={44}
+          />
           <Text style={styles.teamName} numberOfLines={2}>
             {team1}
           </Text>
@@ -151,7 +158,12 @@ export default function MatchScreen() {
           </Text>
         </View>
         <View style={styles.scoreTeamCol}>
-          <TeamBadge name={team2} color="#ffffff" size={44} />
+          <TeamBadge
+            name={team2}
+            logo={logoFor(detail, "team2") || (params.team2Logo as string)}
+            color="#ffffff"
+            size={44}
+          />
           <Text style={styles.teamName} numberOfLines={2}>
             {team2}
           </Text>
@@ -186,6 +198,16 @@ export default function MatchScreen() {
       </View>
     </View>
   );
+}
+
+// ESPN ships proper crests in the detail payload; the list route only has them
+// for football and basketball, so prefer the detail when it arrives.
+function logoFor(detail: Detail | null, side: "team1" | "team2"): string {
+  if (detail?.sport === "Basketball") {
+    const t = side === "team1" ? detail.data.teams?.away : detail.data.teams?.home;
+    return t?.logo ?? "";
+  }
+  return "";
 }
 
 function resolveScore(detail: Detail | null, fallback: string): string {

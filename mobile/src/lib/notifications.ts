@@ -97,9 +97,8 @@ async function writeSnapshot(snap: Record<string, Snapshot>): Promise<void> {
 
 async function notify(title: string, body: string): Promise<void> {
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, sound: true, ...(Platform.OS === "android" ? {} : {}) },
+    content: { title, body, sound: true },
     trigger: null, // fire immediately
-    ...(Platform.OS === "android" ? { identifier: undefined } : {}),
   });
 }
 

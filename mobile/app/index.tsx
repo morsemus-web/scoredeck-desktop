@@ -147,6 +147,8 @@ export default function Home() {
         score: m.score,
         extra: m.extra,
         status: m.status,
+        team1Logo: m.team1Logo ?? "",
+        team2Logo: m.team2Logo ?? "",
       },
     });
   }
