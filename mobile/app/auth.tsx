@@ -1,5 +1,14 @@
-import { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { useState, useRef } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,16 +20,21 @@ export default function Auth() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const codeRef = useRef<TextInput>(null);
 
-  async function sendMagicLink() {
-    if (!email.trim()) return;
+  async function sendCode() {
+    const clean = email.trim().toLowerCase();
+    if (!clean) return;
     setLoading(true);
-    // createURL resolves to scoredeck:// in a standalone build and exp://…
-    // in Expo Go, so the same code works in dev and production.
+    // The email carries BOTH a 6-digit code and a tappable link. The code is
+    // the reliable path on Android — deep links can drop the token during the
+    // browser handoff — but the link still works via useAuthDeepLink().
     const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
+      email: clean,
       options: { emailRedirectTo: Linking.createURL("/") },
     });
     setLoading(false);
@@ -29,12 +43,40 @@ export default function Auth() {
       return;
     }
     setSent(true);
+    setTimeout(() => codeRef.current?.focus(), 350);
+  }
+
+  async function verifyCode(token: string) {
+    if (token.length !== 6) return;
+    setVerifying(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token,
+      type: "email",
+    });
+    setVerifying(false);
+    if (error) {
+      Alert.alert("Incorrect code", error.message);
+      setCode("");
+      return;
+    }
+    // Session is set — the feed screen picks it up via onAuthStateChange.
+    router.replace("/");
+  }
+
+  function onCodeChange(next: string) {
+    const digits = next.replace(/\D/g, "").slice(0, 6);
+    setCode(digits);
+    if (digits.length === 6) verifyCode(digits);
   }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.headerBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+        <TouchableOpacity
+          onPress={() => (sent ? setSent(false) : router.back())}
+          style={styles.back}
+        >
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sign in</Text>
@@ -60,16 +102,18 @@ export default function Auth() {
                   autoCorrect={false}
                   value={email}
                   onChangeText={setEmail}
+                  onSubmitEditing={sendCode}
+                  returnKeyType="go"
                   style={styles.input}
                 />
               </View>
               <Pressable
-                onPress={sendMagicLink}
+                onPress={sendCode}
                 disabled={loading}
                 style={[styles.btn, loading && { opacity: 0.5 }]}
               >
                 <Text style={styles.btnText}>
-                  {loading ? "Sending…" : "Send magic link"}
+                  {loading ? "Sending…" : "Send code"}
                 </Text>
               </Pressable>
             </View>
@@ -80,16 +124,41 @@ export default function Auth() {
         ) : (
           <View style={styles.card}>
             <View style={styles.checkCircle}>
-              <Ionicons name="mail" size={30} color={colors.brand} />
+              <Ionicons name="mail-open-outline" size={30} color={colors.brand} />
             </View>
-            <Text style={styles.title}>Check your email</Text>
+            <Text style={styles.title}>Enter your code</Text>
             <Text style={styles.sub}>
-              We sent a sign-in link to{" "}
+              We sent a 6-digit code to{" "}
               <Text style={{ color: colors.text, fontWeight: "600" }}>{email}</Text>.
-              Tap it on this device to sign in.
             </Text>
-            <Pressable onPress={() => router.replace("/")} style={styles.btnGhost}>
-              <Text style={styles.btnGhostText}>Back to feed</Text>
+
+            <TextInput
+              ref={codeRef}
+              value={code}
+              onChangeText={onCodeChange}
+              keyboardType="number-pad"
+              maxLength={6}
+              editable={!verifying}
+              textContentType="oneTimeCode"
+              autoComplete="sms-otp"
+              style={styles.codeInput}
+              placeholder="000000"
+              placeholderTextColor={colors.border}
+            />
+
+            {verifying ? (
+              <View style={styles.verifyRow}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.verifyText}>Verifying…</Text>
+              </View>
+            ) : (
+              <Text style={styles.hint}>
+                Tapping the link in the email also works.
+              </Text>
+            )}
+
+            <Pressable onPress={sendCode} style={styles.btnGhost}>
+              <Text style={styles.btnGhostText}>Resend code</Text>
             </Pressable>
           </View>
         )}
@@ -123,7 +192,13 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: "center",
   },
-  title: { color: colors.text, fontSize: 22, fontWeight: "700", marginTop: spacing.md, textAlign: "center" },
+  title: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: spacing.md,
+    textAlign: "center",
+  },
   sub: { color: colors.textDim, fontSize: 13, lineHeight: 19, textAlign: "center" },
   inputWrap: {
     flexDirection: "row",
@@ -137,6 +212,19 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   input: { flex: 1, paddingVertical: 12, color: colors.text, fontSize: 15 },
+  codeInput: {
+    width: "100%",
+    backgroundColor: colors.cardMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 16,
+    color: colors.text,
+    fontSize: 30,
+    fontWeight: "700",
+    letterSpacing: 12,
+    textAlign: "center",
+  },
   btn: {
     backgroundColor: colors.brand,
     padding: 14,
@@ -145,7 +233,13 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: spacing.xs,
   },
-  btnText: { color: "#fff", fontWeight: "700", letterSpacing: 0.6, fontSize: 13, textTransform: "uppercase" },
+  btnText: {
+    color: "#fff",
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    fontSize: 13,
+    textTransform: "uppercase",
+  },
   btnGhost: {
     padding: 14,
     borderRadius: radius.md,
@@ -153,10 +247,23 @@ const styles = StyleSheet.create({
     width: "100%",
     borderWidth: 1,
     borderColor: colors.border,
-    marginTop: spacing.md,
   },
-  btnGhostText: { color: colors.textDim, fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.6 },
-  legal: { textAlign: "center", color: colors.textMuted, fontSize: 11, paddingHorizontal: spacing.lg },
+  btnGhostText: {
+    color: colors.textDim,
+    fontWeight: "600",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  verifyRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  verifyText: { color: colors.textDim, fontSize: 12 },
+  hint: { color: colors.textMuted, fontSize: 11, textAlign: "center" },
+  legal: {
+    textAlign: "center",
+    color: colors.textMuted,
+    fontSize: 11,
+    paddingHorizontal: spacing.lg,
+  },
   checkCircle: {
     width: 72,
     height: 72,
