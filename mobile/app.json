@@ -3,7 +3,7 @@
     "name": "ScoreDeck",
     "slug": "scoredeck",
     "owner": "fateh1609",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -27,11 +27,16 @@
     },
     "android": {
       "package": "pro.tryscoredeck.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4b9fae"
-      }
+      },
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
     },
     "extra": {
       "apiBase": "https://tryscoredeck.pro",
@@ -48,7 +53,13 @@
       "expo-router",
       "expo-secure-store",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#0f7a89"
+        }
+      ]
     ]
   }
 }

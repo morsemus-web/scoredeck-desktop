@@ -14,6 +14,13 @@ import SkeletonCard from "@/components/SkeletonCard";
 import AdBanner from "@/components/AdBanner";
 import BottomNav from "@/components/BottomNav";
 import UpdateBanner from "@/components/UpdateBanner";
+import {
+  getAllFavourites,
+  hasOnboarded,
+  matchIsFavourite,
+  type Favourite,
+} from "@/lib/favourites";
+import { checkForAlerts } from "@/lib/notifications";
 
 const SPORTS = ["Cricket", "Football", "Basketball", "F1"] as const;
 const SUB_TABS = ["Matches", "Leagues"] as const;
@@ -36,13 +43,30 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [adsFree, setAdsFree] = useState(false);
   const [onlyLive, setOnlyLive] = useState(false);
+  const [onlyFav, setOnlyFav] = useState(false);
   const [query, setQuery] = useState("");
+  const [favs, setFavs] = useState<{ teams: Favourite[]; leagues: Favourite[] }>({
+    teams: [],
+    leagues: [],
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // First session after signing in: ask what to follow before showing the feed.
+  useEffect(() => {
+    if (!session) return;
+    hasOnboarded().then((done) => {
+      if (!done) router.replace("/onboarding");
+    });
+  }, [session, router]);
+
+  useEffect(() => {
+    getAllFavourites().then(setFavs);
+  }, [session]);
 
   useEffect(() => {
     if (session) fetchMe().then((me) => setAdsFree(!!me?.adsFree));
@@ -54,6 +78,9 @@ export default function Home() {
     const data = await fetchSport(sport, dateForOffset(dayOffset));
     setMatches(data);
     setLoading(false);
+    // Every foreground poll doubles as a notification check for today's board;
+    // the background task covers the app being closed.
+    if (dayOffset === 0) checkForAlerts(data).catch(() => {});
   }, [sport, dayOffset]);
 
   useEffect(() => {
@@ -67,6 +94,7 @@ export default function Home() {
   const filtered = useMemo(() => {
     let out = matches;
     if (onlyLive) out = out.filter((m) => m.isLive);
+    if (onlyFav) out = out.filter((m) => matchIsFavourite(m, favs));
     if (query.trim()) {
       const q = query.toLowerCase();
       out = out.filter(
@@ -77,11 +105,19 @@ export default function Home() {
       );
     }
     return out;
-  }, [matches, onlyLive, query]);
+  }, [matches, onlyLive, onlyFav, favs, query]);
+
+  // Anything the user follows floats to the top as its own card.
+  const favourites = useMemo(
+    () => filtered.filter((m) => matchIsFavourite(m, favs)),
+    [filtered, favs],
+  );
 
   const grouped = useMemo(() => {
+    const favKeys = new Set(favourites.map((m) => `${m.league}|${m.team1}|${m.team2}`));
     const map = new Map<string, MobileMatch[]>();
     for (const m of filtered) {
+      if (favKeys.has(`${m.league}|${m.team1}|${m.team2}`)) continue;
       const bucket = map.get(m.league) ?? [];
       bucket.push(m);
       map.set(m.league, bucket);
@@ -91,7 +127,7 @@ export default function Home() {
       region: list[0]?.region,
       list,
     }));
-  }, [filtered]);
+  }, [filtered, favourites]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -103,7 +139,7 @@ export default function Home() {
     router.push({
       pathname: "/match/[id]",
       params: {
-        id: (m as any).id ?? `${m.league}-${m.team1}-${m.team2}`,
+        id: m.id || `${m.league}-${m.team1}-${m.team2}`,
         sport: m.sport,
         league: m.league,
         team1: m.team1,
@@ -145,6 +181,10 @@ export default function Home() {
               onToggleLive={() => setOnlyLive((v) => !v)}
               dayOffset={dayOffset}
               onOffsetChange={setDayOffset}
+              liveCount={matches.filter((m) => m.isLive).length}
+              onlyFav={onlyFav}
+              onToggleFav={() => setOnlyFav((v) => !v)}
+              favCount={favs.teams.length + favs.leagues.length}
             />
 
             {!adsFree && <AdBanner />}
@@ -155,19 +195,31 @@ export default function Home() {
                 <SkeletonCard />
                 <SkeletonCard />
               </>
-            ) : grouped.length === 0 ? (
+            ) : grouped.length === 0 && favourites.length === 0 ? (
               <EmptyState sport={sport} onlyLive={onlyLive} />
             ) : (
-              grouped.map((g) => (
-                <LeagueCard
-                  key={g.league}
-                  sport={sport}
-                  league={g.league}
-                  region={g.region}
-                  matches={g.list}
-                  onMatchPress={openMatch}
-                />
-              ))
+              <>
+                {favourites.length > 0 && (
+                  <LeagueCard
+                    key="__favourites"
+                    sport={sport}
+                    league="Following"
+                    region="Your favourites"
+                    matches={favourites}
+                    onMatchPress={openMatch}
+                  />
+                )}
+                {grouped.map((g) => (
+                  <LeagueCard
+                    key={g.league}
+                    sport={sport}
+                    league={g.league}
+                    region={g.region}
+                    matches={g.list}
+                    onMatchPress={openMatch}
+                  />
+                ))}
+              </>
             )}
           </>
         ) : (
@@ -175,7 +227,14 @@ export default function Home() {
         )}
       </ScrollView>
 
-      <BottomNav activeSport={sport} active="feed" onPress={() => {}} />
+      <BottomNav
+        activeSport={sport}
+        active="feed"
+        onPress={(k) => {
+          if (k === "favourites") router.push("/favourites");
+          if (k === "notifications") router.push("/alerts");
+        }}
+      />
     </View>
   );
 }

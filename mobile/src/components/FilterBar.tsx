@@ -8,6 +8,10 @@ interface Props {
   onToggleLive: () => void;
   dayOffset: number;             // -1 yesterday, 0 today, +1 tomorrow, etc
   onOffsetChange: (delta: number) => void;
+  liveCount: number;
+  onlyFav: boolean;
+  onToggleFav: () => void;
+  favCount: number;
 }
 
 function labelForOffset(off: number): string {
@@ -19,22 +23,41 @@ function labelForOffset(off: number): string {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
-export default function FilterBar({ onlyLive, onToggleLive, dayOffset, onOffsetChange }: Props) {
+export default function FilterBar({
+  onlyLive,
+  onToggleLive,
+  dayOffset,
+  onOffsetChange,
+  liveCount,
+  onlyFav,
+  onToggleFav,
+  favCount,
+}: Props) {
   return (
     <View style={styles.wrap}>
-      <TouchableOpacity style={styles.filterChip}>
-        <Ionicons name="options-outline" size={14} color={colors.textDim} />
-        <Text style={styles.chipLabel}>Filter</Text>
+      <TouchableOpacity
+        onPress={onToggleFav}
+        style={[styles.filterChip, onlyFav && styles.favChipActive]}
+      >
+        <Ionicons
+          name={onlyFav ? "star" : "star-outline"}
+          size={14}
+          color={onlyFav ? colors.brand : colors.textDim}
+        />
+        <Text style={[styles.chipLabel, onlyFav && { color: colors.brand }]}>
+          {favCount > 0 ? `Following ${favCount}` : "Following"}
+        </Text>
       </TouchableOpacity>
 
+      {/* The count makes it obvious the toggle worked even when nothing is on. */}
       <TouchableOpacity
         onPress={onToggleLive}
         style={[styles.liveChip, onlyLive && styles.liveChipActive]}
       >
         <Text style={[styles.liveLabel, onlyLive && { color: colors.live }]}>
-          Live
+          Live{liveCount > 0 ? ` ${liveCount}` : ""}
         </Text>
-        {onlyLive ? <LiveDot size={6} /> : (
+        {onlyLive || liveCount > 0 ? <LiveDot size={6} /> : (
           <View style={{ width: 6, height: 6, borderRadius: 3, borderWidth: 1, borderColor: colors.textMuted }} />
         )}
       </TouchableOpacity>
@@ -92,6 +115,10 @@ const styles = StyleSheet.create({
   liveChipActive: {
     borderColor: colors.live,
     backgroundColor: colors.liveDim,
+  },
+  favChipActive: {
+    borderColor: colors.brand,
+    backgroundColor: colors.brand + "14",
   },
   liveLabel: {
     color: colors.textDim,
