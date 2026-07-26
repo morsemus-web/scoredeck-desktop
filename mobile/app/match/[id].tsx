@@ -182,7 +182,7 @@ export default function MatchScreen() {
         ) : detail?.sport === "Basketball" ? (
           <BasketballPanel detail={detail.data} accent={accent} />
         ) : detail?.sport === "F1" ? (
-          <F1Panel detail={detail.data} accent={accent} />
+          <F1Panel detail={detail.data} accent={accent} raceId={params.id as string} />
         ) : (
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: spacing.md }}>
             <Card title="Match">

@@ -302,30 +302,87 @@ export interface BasketballDetail {
   injuries: { team: string; players: { name: string; status: string; detail: string }[] }[];
 }
 
+export interface F1Row {
+  pos: string;
+  driver: string;
+  code: string;
+  number: string;
+  team: string;
+  teamColor: string;
+  flag: string;
+  laps: string;
+  gap: string;
+  time: string;
+  q1: string;
+  q2: string;
+  q3: string;
+  grid: string;
+  points: string;
+  status: string;
+}
+
+export interface F1Session {
+  name: string;      // FP1 | FP2 | FP3 | Sprint | SprintQual | Qual | Race
+  date: string;
+  state: string;     // pre | in | post
+  detail: string;
+  available: boolean; // false when no classification exists for it
+}
+
 export interface F1Detail {
   status: string;
-  title: string;
+  id: string;
   season: string;
   round: string;
+  title: string;
   circuit: string;
   locality: string;
   country: string;
+  flag: string;
   startDate: string;
-  sessions: { name: string; date: string; state: string; detail: string }[];
-  results: {
-    position: string; name: string; code: string; constructor: string;
-    grid: string; laps: string; status: string; time: string; points: string;
-    fastestLap: string; avgSpeed: string; image: string;
+  hasSprint: boolean;
+  liveWeekend: boolean;
+  sessions: F1Session[];
+  session: string | null;
+  sessionState: string | null;
+  sessionDate: string | null;
+  results: F1Row[];
+}
+
+export interface F1Standing {
+  position: string;
+  driverId: string;
+  name: string;
+  code: string;
+  number: string;
+  points: string;
+  wins: string;
+  poles: string;
+  podiums: string;
+  flag: string;
+  constructor: string;
+  teamColor: string;
+  image: string;
+}
+
+export interface F1TeamStanding {
+  position: string;
+  name: string;
+  teamColor: string;
+  points: string;
+  wins: string;
+  poles: string;
+  podiums: string;
+}
+
+export interface F1Laps {
+  status: string;
+  totalLaps: number;
+  drivers: {
+    driverId: string; code: string; name: string; number: string;
+    team: string; teamColor: string; grid: number; finish: number;
   }[];
-  qualifying: {
-    position: string; name: string; code: string; constructor: string;
-    q1: string; q2: string; q3: string; image: string;
-  }[];
-  sprint: {
-    position: string; name: string; code: string;
-    constructor: string; time: string; points: string;
-  }[];
-  pitstops: { driver: string; lap: string; stop: string; duration: string }[];
+  laps: { number: number; positions: { driverId: string; position: number }[] }[];
 }
 
 async function detail<T>(path: string): Promise<T | null> {
@@ -347,8 +404,33 @@ export const fetchFootballDetail = (path: string) =>
 export const fetchBasketballDetail = (id: string) =>
   detail<BasketballDetail>(`/api/basketball/details?id=${encodeURIComponent(id)}`);
 
-export const fetchF1Detail = (id: string) =>
-  detail<F1Detail>(`/api/f1/details?id=${encodeURIComponent(id)}`);
+export const fetchF1Detail = (id: string, session?: string) =>
+  detail<F1Detail>(
+    `/api/f1/details?id=${encodeURIComponent(id)}${
+      session ? `&session=${encodeURIComponent(session)}` : ""
+    }`,
+  );
+
+export const fetchF1Laps = (id: string) =>
+  detail<F1Laps>(`/api/f1/laps?id=${encodeURIComponent(id)}`);
+
+/** Championship tables live on the list route, not the per-race one. */
+export async function fetchF1Standings(): Promise<{
+  drivers: F1Standing[];
+  teams: F1TeamStanding[];
+  season: string;
+}> {
+  try {
+    const data = await j("/api/f1");
+    return {
+      drivers: data?.standings ?? [],
+      teams: data?.constructorStandings ?? [],
+      season: data?.season ?? "",
+    };
+  } catch {
+    return { drivers: [], teams: [], season: "" };
+  }
+}
 
 // Public Dodo product IDs — mirrors what the website's Pricing.tsx uses.
 export async function fetchProducts(): Promise<{
