@@ -2,6 +2,13 @@ const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
   'https://tryscoredeck.pro';
 
+const HOUSE = {
+  headline: 'The sanctuary in the dunes of Ras Al Khaimah',
+  subline: 'Powered by RakOasis',
+  short: 'RakOasis',
+  landingUrl: 'https://rakoasis.com',
+};
+
 export interface AdCreative {
   campaignId: number;
   creativeUrl: string;
@@ -41,6 +48,17 @@ export interface AdContext {
   tier?: 'free' | 'pro';
 }
 
+function houseAd(ctx: AdContext): AdCreative {
+  return {
+    campaignId: 0,
+    creativeUrl: '',
+    ...HOUSE,
+    variant: ctx.variant,
+    house: true,
+    ttl: 120,
+  };
+}
+
 export async function fetchAd(ctx: AdContext): Promise<AdCreative | null> {
   const cacheKey = `${ctx.variant}:${ctx.sport ?? ''}:${ctx.tier ?? ''}`;
   const cached = cache[cacheKey];
@@ -62,16 +80,18 @@ export async function fetchAd(ctx: AdContext): Promise<AdCreative | null> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data?.status !== 'ok') {
-      cache[cacheKey] = null;
-      return null;
+      return houseAd(ctx);
     }
     const ad: AdCreative = {
       campaignId: data.campaignId,
       creativeUrl: data.creativeUrl ?? '',
-      headline: data.headline ?? '',
-      subline: data.subline ?? '',
-      short: data.short ?? '',
-      landingUrl: data.landingUrl,
+      // Fall back to the house copy rather than rendering an empty slot: an
+      // older server build, or a campaign row with no text, would otherwise
+      // leave a blank bar under the widget.
+      headline: data.headline || HOUSE.headline,
+      subline: data.subline || HOUSE.subline,
+      short: data.short || HOUSE.short,
+      landingUrl: data.landingUrl || HOUSE.landingUrl,
       variant: data.variant,
       house: !!data.house,
       ttl: data.ttl ?? 60,
@@ -79,8 +99,8 @@ export async function fetchAd(ctx: AdContext): Promise<AdCreative | null> {
     cache[cacheKey] = { ad, fetchedAt: Date.now() };
     return ad;
   } catch {
-    cache[cacheKey] = null;
-    return null;
+    // Offline or the ad server is down — still show the sponsor line.
+    return houseAd(ctx);
   }
 }
 
