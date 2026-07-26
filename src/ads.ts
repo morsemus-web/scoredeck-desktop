@@ -82,16 +82,19 @@ export async function fetchAd(ctx: AdContext): Promise<AdCreative | null> {
     if (data?.status !== 'ok') {
       return houseAd(ctx);
     }
+    // If the server sent no copy of its own — an older build, or a campaign
+    // row with only an image — we render the house text, and the click has to
+    // follow that text to rakoasis.com rather than the row's own landing URL.
+    const usingHouseCopy = !data.subline;
+    if (usingHouseCopy) return houseAd(ctx);
+
     const ad: AdCreative = {
       campaignId: data.campaignId,
       creativeUrl: data.creativeUrl ?? '',
-      // Fall back to the house copy rather than rendering an empty slot: an
-      // older server build, or a campaign row with no text, would otherwise
-      // leave a blank bar under the widget.
-      headline: data.headline || HOUSE.headline,
-      subline: data.subline || HOUSE.subline,
-      short: data.short || HOUSE.short,
-      landingUrl: data.landingUrl || HOUSE.landingUrl,
+      headline: data.headline ?? '',
+      subline: data.subline,
+      short: data.short ?? '',
+      landingUrl: data.landingUrl,
       variant: data.variant,
       house: !!data.house,
       ttl: data.ttl ?? 60,
