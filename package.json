@@ -53,9 +53,11 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": false,
       "createStartMenuShortcut": true,
-      "shortcutName": "ScoreDeck"
+      "shortcutName": "ScoreDeck",
+      "runAfterFinish": true,
+      "include": "build/installer.nsh"
     },
     "mac": {
       "target": [

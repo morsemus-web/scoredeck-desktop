@@ -221,6 +221,41 @@
   pointer-events: none;
 }
 
+/* Text creatives (the house ad) — no hosted image to fall back on. */
+.ad-slot .ad-short {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #cfd6dd;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.ad-slot .ad-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 10px;
+  text-align: center;
+}
+
+.ad-slot .ad-headline {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8edf2;
+  line-height: 1.25;
+}
+
+.ad-slot .ad-subline {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #7f8b96;
+}
+
 .ad-slot-passive {
   width: 60px;
   height: 24px;

@@ -1,29 +1,45 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Image } from "react-native";
 import { colors, radius, spacing } from "@/lib/theme";
+import { fetchAd, type AdCreative } from "@/lib/ads";
 
-// Mobile ad slot. Right now it's a house upsell to the ad-free tier — the
-// same slot will fetch real creatives from /api/ads/next once mobile ad
-// serving is wired.
-export default function AdBanner() {
-  const router = useRouter();
+// Mobile ad slot, served from /api/ads/next. With no paid campaigns booked the
+// route returns the house ad, so the slot is never blank.
+export default function AdBanner({ sport }: { sport?: string }) {
+  const [ad, setAd] = useState<AdCreative | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const next = await fetchAd({ variant: "interstitial", sport });
+      if (mounted) setAd(next);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [sport]);
+
+  if (!ad) return null;
+
+  function open() {
+    if (ad?.landingUrl) Linking.openURL(ad.landingUrl).catch(() => {});
+  }
+
   return (
     <View style={styles.wrap}>
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => router.push("/account")}
-        activeOpacity={0.9}
-      >
+      <TouchableOpacity style={styles.card} onPress={open} activeOpacity={0.9}>
         <View style={styles.tag}>
           <Text style={styles.tagText}>AD</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Go ad-free — $20/year</Text>
-          <Text style={styles.sub}>All sports, no interruptions. Trial active.</Text>
-        </View>
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>Upgrade</Text>
-        </View>
+
+        {ad.creativeUrl ? (
+          <Image source={{ uri: ad.creativeUrl }} style={styles.creative} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, paddingRight: spacing.xl }}>
+            <Text style={styles.title}>{ad.headline}</Text>
+            {!!ad.subline && <Text style={styles.sub}>{ad.subline}</Text>}
+          </View>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -42,6 +58,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
     position: "relative",
+    minHeight: 64,
+  },
+  creative: {
+    flex: 1,
+    height: 60,
+    borderRadius: radius.sm,
   },
   tag: {
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -51,6 +73,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 6,
     right: 8,
+    zIndex: 1,
   },
   tagText: {
     color: "rgba(255,255,255,0.6)",
@@ -62,23 +85,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "700",
-    marginBottom: 2,
+    marginBottom: 3,
   },
   sub: {
     color: "rgba(255,255,255,0.7)",
     fontSize: 11,
-  },
-  cta: {
-    backgroundColor: colors.brandLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.sm,
-  },
-  ctaText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+    fontWeight: "600",
   },
 });

@@ -5,8 +5,13 @@ const API_BASE =
 export interface AdCreative {
   campaignId: number;
   creativeUrl: string;
+  // Text creative, used by the house ad when there's no hosted image.
+  headline: string;
+  subline: string;
+  short: string;
   landingUrl: string;
   variant: 'passive' | 'interstitial';
+  house: boolean;
   ttl: number; // seconds
 }
 
@@ -62,9 +67,13 @@ export async function fetchAd(ctx: AdContext): Promise<AdCreative | null> {
     }
     const ad: AdCreative = {
       campaignId: data.campaignId,
-      creativeUrl: data.creativeUrl,
+      creativeUrl: data.creativeUrl ?? '',
+      headline: data.headline ?? '',
+      subline: data.subline ?? '',
+      short: data.short ?? '',
       landingUrl: data.landingUrl,
       variant: data.variant,
+      house: !!data.house,
       ttl: data.ttl ?? 60,
     };
     cache[cacheKey] = { ad, fetchedAt: Date.now() };
@@ -80,6 +89,8 @@ export async function reportAdEvent(
   type: 'impression' | 'click',
   ctx: AdContext,
 ): Promise<void> {
+  // The house ad is campaign 0 — it has no row to attribute events to.
+  if (!campaignId) return;
   try {
     await fetch(`${API_BASE}/api/ads/event`, {
       method: 'POST',

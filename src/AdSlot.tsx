@@ -59,7 +59,16 @@ export default function AdSlot({ variant, sport, tier, className }: AdSlotProps)
       aria-label="Sponsored"
       title="Sponsored"
     >
-      <img src={ad.creativeUrl} alt="Sponsored" draggable={false} />
+      {ad.creativeUrl ? (
+        <img src={ad.creativeUrl} alt="Sponsored" draggable={false} />
+      ) : variant === 'passive' ? (
+        <span className="ad-short">{ad.short || ad.subline}</span>
+      ) : (
+        <div className="ad-text">
+          <span className="ad-headline">{ad.headline}</span>
+          {ad.subline && <span className="ad-subline">{ad.subline}</span>}
+        </div>
+      )}
       <span className="ad-badge">Ad</span>
     </div>
   );
