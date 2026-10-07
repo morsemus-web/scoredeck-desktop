@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "ScoreDeck — a live sports overlay for your desktop.",
-  "author": "Orbytech IT Solutions L.L.C",
+  "author": "Titan Orbyt Technologies LLC",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -20,7 +20,7 @@
   "build": {
     "appId": "pro.tryscoredeck.app",
     "productName": "ScoreDeck",
-    "copyright": "Copyright © 2026 Orbytech IT Solutions L.L.C",
+    "copyright": "Copyright © 2026 Titan Orbyt Technologies LLC",
     "asar": true,
     "directories": {
       "buildResources": "build",

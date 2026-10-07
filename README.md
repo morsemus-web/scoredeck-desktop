@@ -1,6 +1,6 @@
 # ScoreDeck — Desktop & Mobile Apps
 
-ScoreDeck puts live sports scores in a small always-on-top bar on your desktop, with an Android companion app. Built and operated by **Orbytech IT Solutions L.L.C** (Dubai, UAE).
+ScoreDeck puts live sports scores in a small always-on-top bar on your desktop, with an Android companion app. Built and operated by **Titan Orbyt Technologies LLC** (Dubai, UAE).
 
 This repository contains:
 
@@ -65,7 +65,7 @@ Bump `version` in `package.json` before tagging. The auto-updater compares versi
 
 Builds are currently **unsigned**, so Windows SmartScreen shows "Unknown publisher". The plan:
 
-1. Buy an OV code-signing certificate with cloud signing in the name of **Orbytech IT Solutions L.L.C**.
+1. Buy an OV code-signing certificate with cloud signing in the name of **Titan Orbyt Technologies LLC**.
 2. Add the signing credentials as GitHub Actions secrets.
 3. Enable signing in `release.yml` and in the `build.win` section of `package.json`.
 
@@ -73,4 +73,4 @@ For macOS, notarisation needs an Apple Developer **organisation** account, which
 
 ## Publisher details
 
-`package.json` sets `author` and `build.copyright` to Orbytech IT Solutions L.L.C. Once signing is enabled, the publisher name comes from the certificate and must match the trade licence exactly.
+`package.json` sets `author` and `build.copyright` to Titan Orbyt Technologies LLC. Once signing is enabled, the publisher name comes from the certificate and must match the trade licence exactly.
