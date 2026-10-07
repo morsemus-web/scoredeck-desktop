@@ -3,10 +3,10 @@ const API_BASE =
   'https://tryscoredeck.pro';
 
 const HOUSE = {
-  headline: 'The sanctuary in the dunes of Ras Al Khaimah',
-  subline: 'Powered by RakOasis',
-  short: 'RakOasis',
-  landingUrl: 'https://rakoasis.com',
+  headline: 'Try ScoreDeck Pro · Live Sports Telemetry',
+  subline: 'SCOREDECK PRO · FROM $5/MONTH · NO ADS',
+  short: 'TRY SCOREDECK',
+  landingUrl: 'https://tryscoredeck.pro/#pricing',
 };
 
 export interface AdCreative {
@@ -59,77 +59,74 @@ function houseAd(ctx: AdContext): AdCreative {
   };
 }
 
-export async function fetchAd(ctx: AdContext): Promise<AdCreative | null> {
-  const cacheKey = `${ctx.variant}:${ctx.sport ?? ''}:${ctx.tier ?? ''}`;
-  const cached = cache[cacheKey];
-  if (cached && Date.now() - cached.fetchedAt < cached.ad.ttl * 1000) {
-    return cached.ad;
+export async function fetchAd(ctx: AdContext): Promise<AdCreative> {
+  const key = `${ctx.variant}:${ctx.sport ?? 'all'}`;
+  const now = Date.now();
+  const hit = cache[key];
+  if (hit && now - hit.fetchedAt < hit.ad.ttl * 1000) {
+    return hit.ad;
   }
 
   try {
-    const params = new URLSearchParams({ variant: ctx.variant });
-    if (ctx.sport) params.set('sport', ctx.sport);
-    if (ctx.locale) params.set('locale', ctx.locale);
-    if (ctx.country) params.set('country', ctx.country);
-    if (ctx.tier) params.set('tier', ctx.tier);
+    const p = new URLSearchParams({ variant: ctx.variant });
+    if (ctx.sport) p.set('sport', ctx.sport.toLowerCase());
+    if (ctx.locale) p.set('locale', ctx.locale);
+    if (ctx.country) p.set('country', ctx.country);
+    if (ctx.tier) p.set('tier', ctx.tier);
 
-    const res = await fetch(`${API_BASE}/api/ads/next?${params.toString()}`, {
-      headers: { Accept: 'application/json' },
+    const res = await fetch(`${API_BASE}/api/ads/next?${p.toString()}`, {
       cache: 'no-store',
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (data?.status !== 'ok') {
-      return houseAd(ctx);
-    }
-    // If the server sent no copy of its own — an older build, or a campaign
-    // row with only an image — we render the house text, and the click has to
-    // follow that text to rakoasis.com rather than the row's own landing URL.
-    const usingHouseCopy = !data.subline;
-    if (usingHouseCopy) return houseAd(ctx);
+    if (data?.status !== 'ok') throw new Error('bad response');
 
     const ad: AdCreative = {
-      campaignId: data.campaignId,
+      campaignId: data.campaignId ?? 0,
       creativeUrl: data.creativeUrl ?? '',
-      headline: data.headline ?? '',
-      subline: data.subline,
-      short: data.short ?? '',
-      landingUrl: data.landingUrl,
-      variant: data.variant,
+      headline: data.headline || HOUSE.headline,
+      subline: data.subline || HOUSE.subline,
+      short: data.short || HOUSE.short,
+      landingUrl: data.landingUrl || HOUSE.landingUrl,
+      variant: (data.variant as 'passive' | 'interstitial') || ctx.variant,
       house: !!data.house,
-      ttl: data.ttl ?? 60,
+      ttl: typeof data.ttl === 'number' ? data.ttl : 120,
     };
-    cache[cacheKey] = { ad, fetchedAt: Date.now() };
+
+    cache[key] = { ad, fetchedAt: now };
     return ad;
   } catch {
-    // Offline or the ad server is down — still show the sponsor line.
-    return houseAd(ctx);
+    // Silently fall back to house ad on error or offline
+    const fallback = houseAd(ctx);
+    cache[key] = { ad: fallback, fetchedAt: now };
+    return fallback;
   }
 }
 
-export async function reportAdEvent(
+export function reportAdEvent(
   campaignId: number,
   type: 'impression' | 'click',
   ctx: AdContext,
-): Promise<void> {
-  // The house ad is campaign 0 — it has no row to attribute events to.
+): void {
+  // House ad has campaignId 0 — no need to report
   if (!campaignId) return;
+
   try {
-    await fetch(`${API_BASE}/api/ads/event`, {
+    fetch(`${API_BASE}/api/ads/event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         campaignId,
         type,
-        sport: ctx.sport,
+        sport: ctx.sport?.toLowerCase(),
         locale: ctx.locale,
         country: ctx.country,
         tier: ctx.tier,
         sessionId: sessionId(),
       }),
       keepalive: true,
-    });
+    }).catch(() => {});
   } catch {
-    // Best-effort beacon — swallow errors.
+    // Non-blocking telemetry
   }
 }

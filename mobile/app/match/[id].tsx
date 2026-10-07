@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { track } from "@/lib/usage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, spacing, shadow, sportColor } from "@/lib/theme";
 import LiveDot from "@/components/LiveDot";
@@ -65,6 +66,10 @@ export default function MatchScreen() {
   const team2 = (params.team2 as string) || "Team 2";
   const league = (params.league as string) || sport;
   const isLive = params.status === "live";
+
+  useEffect(() => {
+    track("match_view", { sport, league });
+  }, [params.id, sport, league]);
 
   useEffect(() => {
     isFavourite("team", team1).then(setStarred);

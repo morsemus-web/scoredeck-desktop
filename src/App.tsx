@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import Setup from './Setup';
 import Widget from './Widget';
 import type { AppConfig } from './types';
+import { startUsageTracking } from './usage';
 
 function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [isSetupMode, setIsSetupMode] = useState(true);
 
   useEffect(() => {
+    startUsageTracking();
+
     // Load config from local storage on mount
     const savedConfigStr = localStorage.getItem('scoredeck-config');
     if (savedConfigStr) {

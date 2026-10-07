@@ -61,7 +61,7 @@ Every score comes from Scoreweb (`https://tryscoredeck.pro/api/{cricket,soccer,b
 npm run build:apk
 ```
 
-EAS builds it in the cloud, hands back a download URL. Save the resulting file as `ScoreDeck.apk` and drop it in `Scoreweb/public/downloads/ScoreDeck.apk` so `tryscoredeck.pro/download` serves it. That path is git-ignored so the binary won't bloat the repo — treat it as a deploy artifact.
+EAS builds it in the cloud, hands back a download URL. Save the resulting file as `ScoreDeck.apk` and drop it in the website repo (`morsemus-web/hi`) at `public/downloads/ScoreDeck.apk` so `tryscoredeck.pro/download` serves it. That path is git-ignored so the binary won't bloat the repo — treat it as a deploy artifact.
 
 ## Configure Supabase for mobile
 
@@ -70,7 +70,8 @@ In Supabase → Authentication → URL Configuration:
 
 ## What's stubbed / TODO
 
-- **Ads are a house placeholder** — the same `<AdBanner>` renders regardless of what `/api/ads/next` returns. Wire in the real ad-serving flow later (pattern is identical to the desktop `AdSlot.tsx`).
-- **Push notifications** are not set up. Add `expo-notifications` when key-event alerts are ready.
-- **Deep-link into checkout success** — currently the Dodo checkout opens in the in-app browser and returns to the app; add a `scoredeck://payment/success` handler to refresh `fetchMe()` immediately.
+- **Ads.** `src/components/AdBanner.tsx` shows a direct sponsor from `/api/ads/next` (impressions and clicks logged), otherwise Google AdMob (after Google's consent form, `src/lib/admob.ts`), otherwise the house ad. Before release, replace Google's **test** AdMob app ID in `app.json` and set `extra.admobBannerId`; see the website repo's `docs/ADS.md`. AdMob is a native module: use EAS builds, not Expo Go.
+- **No in-app purchases.** Google Play requires Play Billing for buying ad removal inside the app, so the Account screen only explains that ad-free comes with a website subscription (Stripe). Signing in with the same email switches ads off.
+- **Usage stats** (`src/lib/usage.ts`) are anonymous and controlled by Account → Privacy → "Share anonymous usage statistics" (off by default in the EU/UK/CH).
+- **Score alerts are local, not push.** `src/lib/notifications.ts` checks favourites with `expo-background-fetch` and fires local notifications. Android throttles background fetch (often 15+ minutes), so alerts can be late. Instant alerts need a server-side sender (e.g. Supabase Cron + Expo Push).
 - **Locale coverage** — the mobile app currently ships English only. Reuse Scoreweb's `messages/*.json` translations when adding i18n.

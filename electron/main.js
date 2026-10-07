@@ -28,7 +28,7 @@ autoUpdater.on('update-downloaded', (info) => {
 // Bar plus the sponsor strip beneath it. The collapse path used to assume a
 // different height than the initial resize, which left a gap after expanding
 // and re-collapsing — one constant now drives both.
-const WIDGET_HEIGHT = 68;
+const WIDGET_HEIGHT = 64;
 
 function createTrayIcon() {
   const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
@@ -96,11 +96,12 @@ function createWindow() {
     width: 600,
     height: 500,
     center: true,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
     frame: false,
-    transparent: true,
-    resizable: false,
-    skipTaskbar: true,
+    transparent: false,
+    backgroundColor: '#121212',
+    resizable: true,
+    skipTaskbar: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -113,6 +114,9 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 app.whenReady().then(() => {

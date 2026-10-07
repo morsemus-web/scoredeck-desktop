@@ -4,14 +4,15 @@ const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
   'https://tryscoredeck.pro';
 
-const SPORT_COLOR: Record<string, string> = {
+export const SPORT_COLOR: Record<string, string> = {
   Cricket: '#4b9fae',
-  Football: '#b37340',
+  Football: '#10b981',
   Basketball: '#b89849',
   F1: '#cc3333',
 };
 
 export interface WidgetData {
+  sport: string;
   color: string;
   team1: string;
   team2: string;
@@ -19,17 +20,22 @@ export interface WidgetData {
   extra: string;
   progress: string;
   analysis: string[];
+  isLive: boolean;
+  homeBadge?: string;
+  awayBadge?: string;
 }
 
 function empty(sport: string, msg: string): WidgetData {
   return {
+    sport,
     color: SPORT_COLOR[sport] ?? '#ffffff',
-    team1: '—',
-    team2: '—',
+    team1: 'SCOREDECK',
+    team2: 'LIVE',
     score: msg,
-    extra: '',
+    extra: 'STANDBY',
     progress: '0%',
-    analysis: [],
+    analysis: ['Waiting for next live game to start.'],
+    isLive: false,
   };
 }
 
@@ -43,23 +49,9 @@ async function getJson(path: string): Promise<any> {
 }
 
 function short(name: string): string {
+  if (!name) return '';
   const t = name.trim();
-  return t.length <= 3 ? t.toUpperCase() : t.substring(0, 3).toUpperCase();
-}
-
-// ---------- Cricket ----------
-// /api/cricket proxies live-cricket-score-api-production.up.railway.app/all_matches
-// Upstream returns an array (or object) of matches:
-//   { id, status, title, score, status_text, current_batsmen[], current_bowler{} }
-
-interface CricketMatch {
-  id?: string;
-  status?: string;
-  title?: string;
-  score?: string;
-  status_text?: string;
-  current_batsmen?: { name: string; score: string }[];
-  current_bowler?: { name: string };
+  return t.length <= 4 ? t.toUpperCase() : t.substring(0, 3).toUpperCase();
 }
 
 function parseTeams(title: string): [string, string] {
@@ -69,277 +61,196 @@ function parseTeams(title: string): [string, string] {
   return [title.trim(), ''];
 }
 
-function pickCricket(matches: CricketMatch[], config: TrackConfig): CricketMatch | null {
-  if (!matches?.length) return null;
-  const live = matches.filter(
-    (m) =>
-      (m.status ?? '').toLowerCase() === 'live' ||
-      /live|in\s*progress|inn/i.test(m.status_text ?? ''),
-  );
-  const pool = live.length ? live : matches;
-  if (config.type === 'team' && config.selection) {
-    const needle = config.selection.toLowerCase();
-    const hit = pool.find((m) => (m.title ?? '').toLowerCase().includes(needle));
-    if (hit) return hit;
-  }
-  return pool[0];
-}
+// ---------- Live Fetchers ----------
 
-async function fetchCricket(config: TrackConfig): Promise<WidgetData> {
+export async function fetchLiveCricket(): Promise<WidgetData[]> {
   try {
     const data = await getJson('/api/cricket');
-    const matches: CricketMatch[] = Array.isArray(data)
+    const matches: any[] = Array.isArray(data)
       ? data
       : Array.isArray(data?.matches)
       ? data.matches
       : Array.isArray(data?.data)
       ? data.data
       : [];
-    const match = pickCricket(matches, config);
-    if (!match) return empty('Cricket', 'No live match');
 
-    const [t1, t2] = parseTeams(match.title ?? '');
-    const overMatch = /([\d.]+)\s*ov/i.exec(match.status_text ?? '');
-    const overs = overMatch ? parseFloat(overMatch[1]) : 0;
-    const progressPct = Math.min(100, Math.round((overs / 50) * 100));
+    const live = matches.filter((m) => {
+      const st = (m.status_text || '').toLowerCase();
+      const isCompleted = st.includes('won') || st.includes('beat') || st.includes('draw') || st.includes('tied') || st.includes('completed') || st.includes('abandoned');
+      const isUpcoming = st.includes('starts at') || st.includes('starts in') || st.includes('preview') || st.includes('yet to begin');
+      if (isCompleted || isUpcoming) return false;
+      return (m.status ?? '').toLowerCase() === 'live' || /live|in\s*progress|need|trail|lead|innings/i.test(st);
+    });
 
-    const analysis: string[] = [];
-    if (match.title) analysis.push(match.title);
-    if (match.current_batsmen?.length) {
-      analysis.push(
-        `Batsmen: ${match.current_batsmen.map((b) => `${b.name} ${b.score}`).join(', ')}`,
-      );
-    }
-    if (match.current_bowler?.name) analysis.push(`Bowler: ${match.current_bowler.name}`);
-    if (match.status_text) analysis.push(match.status_text);
-
-    return {
-      color: SPORT_COLOR.Cricket,
-      team1: short(t1) || 'T1',
-      team2: short(t2) || 'T2',
-      score: match.score || 'LIVE',
-      extra: overMatch ? `${overMatch[1]} ov` : (match.status ?? ''),
-      progress: `${progressPct}%`,
-      analysis,
-    };
+    return live.map((m) => {
+      const [t1, t2] = parseTeams(m.title ?? '');
+      return {
+        sport: 'Cricket',
+        color: SPORT_COLOR.Cricket,
+        team1: short(t1) || 'T1',
+        team2: short(t2) || 'T2',
+        score: m.score || 'LIVE',
+        extra: m.status_text || 'Live',
+        progress: '65%',
+        analysis: [
+          m.title ?? '',
+          m.status_text ?? '',
+          m.current_batsmen?.map((b: any) => `${b.name} ${b.score}`).join(', ') ?? '',
+        ].filter(Boolean),
+        isLive: true,
+      };
+    });
   } catch {
-    return empty('Cricket', 'Offline');
+    return [];
   }
 }
 
-// ---------- Football (soccer) ----------
-// /api/soccer returns { status:"success", leagues:[{league, matches:[{home_team,
-// away_team, home_score, away_score, status:"Live"|"Finished"|"Upcoming"|"Postponed",
-// time, home_badge, away_badge}]}]}
-
-interface SoccerMatch {
-  home_team: string;
-  away_team: string;
-  home_score: string;
-  away_score: string;
-  status: string;
-  time: string;
-}
-
-interface SoccerLeague {
-  league: string;
-  matches: SoccerMatch[];
-}
-
-function pickSoccer(
-  leagues: SoccerLeague[],
-  config: TrackConfig,
-): { league: string; match: SoccerMatch } | null {
-  if (!leagues?.length) return null;
-  const flat = leagues.flatMap((l) => l.matches.map((m) => ({ league: l.league, match: m })));
-  const live = flat.filter((x) => x.match.status === 'Live');
-  const pool = live.length ? live : flat;
-
-  if (config.type === 'league' && config.selection) {
-    const needle = config.selection.toLowerCase();
-    const found = pool.find((x) => x.league.toLowerCase().includes(needle));
-    if (found) return found;
-  }
-  if (config.type === 'team' && config.selection) {
-    const needle = config.selection.toLowerCase();
-    const found = pool.find(
-      (x) =>
-        x.match.home_team.toLowerCase().includes(needle) ||
-        x.match.away_team.toLowerCase().includes(needle),
-    );
-    if (found) return found;
-  }
-  return pool[0];
-}
-
-async function fetchFootball(config: TrackConfig): Promise<WidgetData> {
+export async function fetchLiveSoccer(): Promise<WidgetData[]> {
   try {
     const data = await getJson('/api/soccer');
-    if (data?.status !== 'success') throw new Error('bad status');
-    const leagues: SoccerLeague[] = Array.isArray(data?.leagues) ? data.leagues : [];
-    const picked = pickSoccer(leagues, config);
-    if (!picked) return empty('Football', 'No live match');
+    if (data?.status !== 'success') return [];
+    const leagues: any[] = Array.isArray(data?.leagues) ? data.leagues : [];
+    const flat = leagues.flatMap((l) =>
+      (l.matches || []).map((m: any) => ({ league: l.league, match: m }))
+    );
 
-    const { league, match } = picked;
-    const minMatch = /^(\d+)['’]/.exec(match.time);
-    const minute = minMatch ? parseInt(minMatch[1], 10) : 0;
-    const progressPct =
-      match.status === 'Finished'
-        ? 100
-        : match.status === 'Live'
-        ? Math.min(100, Math.round((minute / 90) * 100))
-        : 0;
+    // 1. In-play live matches (active minutes, HT, ET, etc.)
+    const inPlay = flat.filter(
+      (x) =>
+        x.match.status === 'Live' ||
+        /^\d+['’]/.test(x.match.time) ||
+        x.match.time === 'HT' ||
+        x.match.time === 'ET'
+    );
 
-    return {
-      color: SPORT_COLOR.Football,
-      team1: short(match.home_team),
-      team2: short(match.away_team),
-      score: `${match.home_score || '0'}-${match.away_score || '0'}`,
-      extra: match.time || match.status,
-      progress: `${progressPct}%`,
-      analysis: [
-        `${match.home_team} vs ${match.away_team}`,
-        `League: ${league}`,
-        `Status: ${match.status}`,
-      ],
-    };
+    if (inPlay.length > 0) {
+      return inPlay.map(({ league, match }) => {
+        const minMatch = /^(\d+)['’]/.exec(match.time);
+        const minute = minMatch ? parseInt(minMatch[1], 10) : 45;
+        const progressPct = Math.min(100, Math.round((minute / 90) * 100));
+
+        return {
+          sport: 'Football',
+          color: SPORT_COLOR.Football,
+          team1: short(match.home_team),
+          team2: short(match.away_team),
+          score: `${match.home_score || '0'}-${match.away_score || '0'}`,
+          extra: match.time || 'LIVE',
+          progress: `${progressPct}%`,
+          analysis: [
+            `${match.home_team} vs ${match.away_team}`,
+            `League: ${league}`,
+            `Status: Live (${match.time})`,
+          ],
+          homeBadge: match.home_badge || '',
+          awayBadge: match.away_badge || '',
+          isLive: true,
+        };
+      });
+    }
+
+    // 2. If no match is currently mid-minute, display today's premier fixtures & live kickoff schedule
+    const upcomingOrRecent = flat.filter(
+      (x) => x.match.home_team && x.match.away_team
+    );
+
+    if (upcomingOrRecent.length > 0) {
+      return upcomingOrRecent.slice(0, 12).map(({ league, match }) => {
+        const isFin = match.status === 'Finished' || match.time === 'FT';
+        return {
+          sport: 'Football',
+          color: SPORT_COLOR.Football,
+          team1: short(match.home_team),
+          team2: short(match.away_team),
+          score: isFin ? `${match.home_score || '0'}-${match.away_score || '0'}` : 'VS',
+          extra: isFin ? 'FT' : match.time || 'TODAY',
+          progress: isFin ? '100%' : '15%',
+          analysis: [
+            `${match.home_team} vs ${match.away_team}`,
+            `League: ${league}`,
+            isFin ? `Full-Time: ${match.home_score}-${match.away_score}` : `Kickoff: ${match.time} Today`,
+          ],
+          homeBadge: match.home_badge || '',
+          awayBadge: match.away_badge || '',
+          isLive: !isFin,
+        };
+      });
+    }
+
+    return [];
   } catch {
-    return empty('Football', 'Offline');
+    return [];
   }
 }
 
-// ---------- Basketball (NBA) ----------
-// Live /api/basketball returns:
-//   { status:"success", matches:[{id, title, team1, team2, team1Full, team2Full,
-//     team1Logo, team2Logo, venue, broadcasts, score, extra, status:"pre"|"in"|"post", isLive}] }
-
-interface NbaMatch {
-  id: string;
-  title?: string;
-  team1: string;
-  team2: string;
-  team1Full?: string;
-  team2Full?: string;
-  score: string;
-  extra: string;
-  status: string;
-  isLive?: boolean;
-}
-
-async function fetchBasketball(config: TrackConfig): Promise<WidgetData> {
+export async function fetchLiveBasketball(): Promise<WidgetData[]> {
   try {
     const data = await getJson('/api/basketball');
-    if (data?.status !== 'success') throw new Error('bad status');
-    const matches: NbaMatch[] = Array.isArray(data?.matches) ? data.matches : [];
-    if (!matches.length) return empty('Basketball', 'No games');
-
+    if (data?.status !== 'success') return [];
+    const matches: any[] = Array.isArray(data?.matches) ? data.matches : [];
     const live = matches.filter((m) => m.isLive || m.status === 'in');
-    const pool = live.length ? live : matches;
 
-    let match = pool[0];
-    if (config.type === 'team' && config.selection) {
-      const needle = config.selection.toLowerCase();
-      const hit = pool.find(
-        (m) =>
-          m.team1.toLowerCase().includes(needle) ||
-          m.team2.toLowerCase().includes(needle) ||
-          (m.team1Full ?? '').toLowerCase().includes(needle) ||
-          (m.team2Full ?? '').toLowerCase().includes(needle),
-      );
-      if (hit) match = hit;
-    }
-
-    const progressPct =
-      match.status === 'post' ? 100 : match.status === 'in' ? 60 : 0;
-
-    return {
+    return live.map((m) => ({
+      sport: 'Basketball',
       color: SPORT_COLOR.Basketball,
-      team1: match.team1,
-      team2: match.team2,
-      score: match.score,
-      extra: match.extra,
-      progress: `${progressPct}%`,
-      analysis: [
-        match.title ?? `${match.team1Full ?? match.team1} vs ${match.team2Full ?? match.team2}`,
-        `Status: ${match.extra}`,
-      ],
-    };
+      team1: short(m.team1),
+      team2: short(m.team2),
+      score: m.score || 'LIVE',
+      extra: m.extra || 'IN GAME',
+      progress: '50%',
+      analysis: [`${m.team1Full ?? m.team1} vs ${m.team2Full ?? m.team2}`, m.extra],
+      isLive: true,
+    }));
   } catch {
-    return empty('Basketball', 'Offline');
+    return [];
   }
 }
 
-// ---------- F1 ----------
-// Live /api/f1 returns:
-//   { status:"success", matches:[{id, title, team1, team2, team1Full, score:"P1",
-//     extra, status, isLive, analysis:[...], standings:[...], nextRace, pastWinners:[...]}] }
+// Return active live matches across all sports with seamless soccer support
+export async function fetchAllActiveLiveMatches(): Promise<WidgetData[]> {
+  const [soccer, cricket, basketball] = await Promise.all([
+    fetchLiveSoccer(),
+    fetchLiveCricket(),
+    fetchLiveBasketball(),
+  ]);
 
-interface F1Match {
-  id: string;
-  title?: string;
-  team1: string;
-  team2: string;
-  team1Full?: string;
-  score: string;
-  extra: string;
-  status: string;
-  isLive?: boolean;
-  analysis?: string[];
-  nextRace?: string;
-}
+  const combined: WidgetData[] = [];
 
-async function fetchF1(config: TrackConfig): Promise<WidgetData> {
-  try {
-    const data = await getJson('/api/f1');
-    if (data?.status !== 'success') throw new Error('bad status');
-    const matches: F1Match[] = Array.isArray(data?.matches) ? data.matches : [];
-    if (!matches.length) return empty('F1', 'No data');
+  // Prioritize active in-play matches
+  const activeInPlay = [...soccer.filter((m) => m.isLive), ...cricket, ...basketball];
+  if (activeInPlay.length > 0) {
+    combined.push(...activeInPlay);
+  }
 
-    let match = matches[0];
-    if (config.type === 'driver' && config.selection) {
-      const needle = config.selection.toLowerCase();
-      const hit = matches.find(
-        (m) =>
-          m.team1.toLowerCase() === needle ||
-          (m.team1Full ?? '').toLowerCase().includes(needle),
-      );
-      if (hit) match = hit;
+  // Include soccer fixtures
+  if (soccer.length > 0) {
+    for (const m of soccer) {
+      if (!combined.some((c) => c.team1 === m.team1 && c.team2 === m.team2)) {
+        combined.push(m);
+      }
     }
-
-    return {
-      color: SPORT_COLOR.F1,
-      team1: match.team1,
-      team2: match.team2 || 'WIN',
-      score: match.score,
-      extra: match.extra,
-      progress: match.status === 'post' ? '100%' : match.status === 'in' ? '60%' : '0%',
-      analysis: [
-        match.title ?? '',
-        ...(match.analysis ?? []),
-        match.nextRace ? `Next: ${match.nextRace}` : '',
-      ].filter(Boolean),
-    };
-  } catch {
-    return empty('F1', 'Offline');
   }
-}
 
-// ---------- Router ----------
+  // Offline or nothing on: return nothing rather than an invented match.
+  return combined;
+}
 
 export async function fetchSportData(
   sport: string,
-  config: TrackConfig,
+  _config: TrackConfig,
 ): Promise<WidgetData> {
-  switch (sport) {
-    case 'Cricket':
-      return fetchCricket(config);
-    case 'Football':
-      return fetchFootball(config);
-    case 'Basketball':
-      return fetchBasketball(config);
-    case 'F1':
-      return fetchF1(config);
-    default:
-      return empty(sport, 'Unknown sport');
+  if (sport === 'Football') {
+    const s = await fetchLiveSoccer();
+    return s[0] || empty('Football', 'No Live Match');
   }
+  if (sport === 'Cricket') {
+    const c = await fetchLiveCricket();
+    return c[0] || empty('Cricket', 'No Live Match');
+  }
+  if (sport === 'Basketball') {
+    const b = await fetchLiveBasketball();
+    return b[0] || empty('Basketball', 'No Live Game');
+  }
+  const all = await fetchAllActiveLiveMatches();
+  return all[0] || empty('Football', 'No Live Match');
 }

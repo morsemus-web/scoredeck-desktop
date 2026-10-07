@@ -10,4 +10,6 @@ export interface AppConfig {
   startupOnBoot: boolean;
   displayId: string;
   visibility: 'always' | 'live-only';
+  /** Anonymous usage stats opt-in. Unset → regional default (off in EU/UK/CH). */
+  shareUsage?: boolean;
 }

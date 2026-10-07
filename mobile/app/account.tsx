@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Alert, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, TouchableOpacity, ScrollView, Switch } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import Constants from "expo-constants";
 import { supabase } from "@/lib/supabase";
-import { fetchMe, fetchProducts } from "@/lib/api";
+import { fetchMe } from "@/lib/api";
+import { setUsageSharing, usageSharing } from "@/lib/usage";
 import { colors, radius, spacing, shadow } from "@/lib/theme";
-
-const API_BASE = (Constants.expoConfig?.extra as any)?.apiBase ?? "https://tryscoredeck.pro";
 
 export default function Account() {
   const router = useRouter();
@@ -18,46 +16,29 @@ export default function Account() {
   const [adsFree, setAdsFree] = useState(false);
   const [expires, setExpires] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [productId, setProductId] = useState<string | null>(null);
+  const [shareUsage, setShareUsage] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const [me, products] = await Promise.all([fetchMe(), fetchProducts()]);
+      const [me, sharing] = await Promise.all([fetchMe(), usageSharing()]);
       if (me) {
         setEmail(me.email ?? "");
         setAdsFree(me.adsFree);
         setExpires(me.adsFreeUntil ?? null);
       }
-      setProductId(products.mobile ?? products.annual ?? null);
+      setShareUsage(sharing);
       setLoading(false);
     })();
   }, []);
 
+  function toggleSharing(on: boolean) {
+    setShareUsage(on);
+    setUsageSharing(on);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/");
-  }
-
-  async function buyAdFree() {
-    if (!productId) {
-      Alert.alert(
-        "Coming soon",
-        "The subscription product isn't configured on the server yet. Set NEXT_PUBLIC_DODO_ANNUAL_ID in Vercel to enable checkout.",
-      );
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/api/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, email }),
-      });
-      const { checkout_url, error } = await res.json();
-      if (error || !checkout_url) throw new Error(error ?? "No URL");
-      await WebBrowser.openBrowserAsync(checkout_url);
-    } catch (e: any) {
-      Alert.alert("Checkout failed", e.message ?? "Try again later");
-    }
   }
 
   return (
@@ -124,15 +105,22 @@ export default function Account() {
           </View>
 
           {!adsFree && (
-            <TouchableOpacity onPress={buyAdFree} style={styles.cta}>
-              <MaterialCommunityIcons name="crown" size={20} color="#fff" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ctaText}>Go ad-free · $20 / year</Text>
-                <Text style={styles.ctaSub}>Billed via Dodo Payments</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
-            </TouchableOpacity>
+            // Google Play doesn't allow buying ad removal through another
+            // payment provider inside the app, so the app only explains it.
+            <Text style={styles.note}>
+              Ad-free comes with a ScoreDeck Pro subscription. If you already have one, sign in with the same email and ads switch off automatically.
+            </Text>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Privacy</Text>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <Text style={[styles.label, { flex: 1, paddingRight: spacing.md }]}>Share anonymous usage statistics</Text>
+              <Switch value={shareUsage} onValueChange={toggleSharing} trackColor={{ true: colors.brand }} />
+            </View>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -165,6 +153,12 @@ function Link({ icon, label, onPress }: { icon: any; label: string; onPress: () 
 }
 
 const styles = StyleSheet.create({
+  note: {
+    color: colors.textDim,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingHorizontal: spacing.xs,
+  },
   root: { flex: 1, backgroundColor: colors.brand },
   headerBar: {
     flexDirection: "row",
@@ -239,18 +233,6 @@ const styles = StyleSheet.create({
   pillDot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontSize: 11, fontWeight: "700" },
 
-  cta: {
-    marginTop: spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.brand,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    ...shadow.card,
-  },
-  ctaText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  ctaSub: { color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 2 },
 
   linkRow: {
     flexDirection: "row",

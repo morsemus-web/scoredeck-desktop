@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { defaultShareUsage } from './usage';
 import type { AppConfig, TrackConfig } from './types';
 import './Setup.css';
 
@@ -20,6 +21,12 @@ export default function Setup({ onComplete, initialConfig }: SetupProps) {
   );
   const [displays, setDisplays] = useState<any[]>([]);
   const [displayId, setDisplayId] = useState(initialConfig?.displayId ?? '');
+  const [shareUsage, setShareUsage] = useState<boolean | null>(initialConfig?.shareUsage ?? null);
+
+  // No saved choice yet: pre-set the box to the regional default.
+  useEffect(() => {
+    if (shareUsage === null) defaultShareUsage().then(setShareUsage);
+  }, [shareUsage]);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -65,7 +72,8 @@ export default function Setup({ onComplete, initialConfig }: SetupProps) {
       trackedSports,
       startupOnBoot,
       displayId,
-      visibility
+      visibility,
+      shareUsage: shareUsage ?? false,
     });
   };
 
@@ -167,6 +175,11 @@ export default function Setup({ onComplete, initialConfig }: SetupProps) {
             <option value="always">Always Show</option>
             <option value="live-only">Only when tracked match is live</option>
           </select>
+        </label>
+
+        <label className="settings-row">
+          <span>Share anonymous usage statistics</span>
+          <input type="checkbox" checked={!!shareUsage} onChange={e => setShareUsage(e.target.checked)} />
         </label>
 
         <label className="settings-row">

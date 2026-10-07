@@ -47,7 +47,8 @@
       },
       "eas": {
         "projectId": "2b994b08-9ca3-4d44-b369-f2a3ec8ec6ec"
-      }
+      },
+      "admobBannerId": ""
     },
     "plugins": [
       "expo-router",
@@ -58,6 +59,13 @@
         "expo-notifications",
         {
           "color": "#0f7a89"
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "delayAppMeasurementInit": true
         }
       ]
     ]
